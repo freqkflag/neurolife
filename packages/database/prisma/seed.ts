@@ -7,13 +7,21 @@ const DEV_EMAIL = 'dev@neurolife.local';
 const DEV_PASSWORD = 'dev-neurolife';
 
 async function main() {
-  const existing = await prisma.user.findUnique({ where: { email: DEV_EMAIL } });
+  const password = await bcrypt.hash(DEV_PASSWORD, 12);
+  const existing = await prisma.user.findUnique({
+    where: { email: DEV_EMAIL },
+    include: { profile: true },
+  });
+
   if (existing) {
-    console.log(`Dev user already exists: ${DEV_EMAIL}`);
+    await prisma.user.update({
+      where: { email: DEV_EMAIL },
+      data: { password },
+    });
+    console.log(`Reset dev password for ${DEV_EMAIL} (password: ${DEV_PASSWORD})`);
     return;
   }
 
-  const password = await bcrypt.hash(DEV_PASSWORD, 12);
   await prisma.user.create({
     data: {
       email: DEV_EMAIL,
