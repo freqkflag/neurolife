@@ -40,7 +40,7 @@ Copy from [.env.example](../.env.example). Key groups:
 | AI | `OPENAI_API_KEY`, `SELF_HOSTED_AI_URL` | Optional; see [privacy-modes.md](privacy-modes.md) |
 | Apps | `API_PORT`, `NEXT_PUBLIC_API_URL` | API default `3001`, web `3000` |
 
-Optional: `CORS_ORIGIN` (defaults to `http://localhost:3000`).
+Optional: `CORS_ORIGIN` (comma-separated; defaults to `http://localhost:3000`). `API_HOST` defaults to `0.0.0.0` so the API is reachable on the LAN.
 
 ## Running apps
 
@@ -48,6 +48,39 @@ Optional: `CORS_ORIGIN` (defaults to `http://localhost:3000`).
 
 ```bash
 pnpm dev
+```
+
+### Headless homelab / LAN access
+
+On a server without a local browser, bind services to the LAN so a Chromebook or phone on the same network can reach them. **Use the homelab IP, not `localhost`, on remote devices.**
+
+```bash
+# One-shot (foreground)
+pnpm dev:lan
+
+# Persistent background session (recommended on headless Ubuntu)
+pnpm dev:tmux          # starts detached tmux session "neurolife"
+tmux attach -t neurolife # view logs; Ctrl+b then d to detach
+
+pnpm stop:dev          # stop ports 3000, 3001, 8082
+pnpm health            # port + HTTP checks (localhost + LAN IP)
+pnpm verify:dev        # health + dev login + dashboard API
+```
+
+| URL (example IP) | Service |
+|------------------|---------|
+| http://192.168.12.127:3000 | Web Command Center |
+| http://192.168.12.127:3001/health | API health |
+| 192.168.12.127:8082 | Expo Metro |
+
+Override auto-detected IP: `DEV_LAN_IP=192.168.12.127 pnpm dev:lan`
+
+If LAN HTTP fails but localhost works, open the firewall:
+
+```bash
+sudo ufw allow 3000/tcp
+sudo ufw allow 3001/tcp
+sudo ufw allow 8082/tcp
 ```
 
 ### Individual apps

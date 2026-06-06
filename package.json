@@ -4,6 +4,11 @@
   "version": "0.1.0",
   "scripts": {
     "dev": "turbo run dev",
+    "dev:lan": "bash scripts/dev-lan.sh",
+    "dev:tmux": "bash scripts/dev-tmux.sh",
+    "stop:dev": "bash scripts/stop-dev.sh",
+    "health": "bash scripts/health.sh",
+    "verify:dev": "bash scripts/verify-dev.sh",
     "build": "turbo run build",
     "lint": "turbo run lint",
     "typecheck": "turbo run typecheck",

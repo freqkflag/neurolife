@@ -46,13 +46,16 @@ pnpm dev
 
 After clone, symlink env for API/Prisma: `ln -sf ../../.env apps/api/.env && ln -sf ../../.env packages/database/.env`
 
+**Headless homelab / LAN:** `pnpm dev:lan` (or `pnpm dev:tmux` for a persistent tmux session). From another device use the server LAN IP, e.g. `http://192.168.12.127:3000` — not `localhost`. See [docs/development.md](docs/development.md#headless-homelab--lan-access).
+
 | App | URL / command |
 |-----|----------------|
-| Web (Command Center) | http://localhost:3000 |
+| Web (Command Center) | http://localhost:3000 (LAN: `pnpm dev:lan`) |
 | API | http://localhost:3001 |
 | Mobile (Pocket) | `pnpm --filter @neurolife/mobile dev` (Metro **8082**) |
 | API health | http://localhost:3001/health |
 | Dev login | `dev@neurolife.local` / `dev-neurolife` after `pnpm db:seed` |
+| Ops | `pnpm health` · `pnpm verify:dev` · `pnpm stop:dev` |
 
 ### Build & verify
 
