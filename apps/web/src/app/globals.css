@@ -1,0 +1,26 @@
+@import 'tailwindcss';
+
+:root {
+  --bg: #1e2022;
+  --surface: #2a2d30;
+  --text: #d4d6d8;
+  --text-muted: #9ba1a6;
+  --accent: #8b9daf;
+  --border: #3d4145;
+}
+
+[data-theme='softCream'] {
+  --bg: #fdfbf7;
+  --surface: #f5f0e8;
+  --text: #3d3a36;
+  --text-muted: #6b6560;
+  --accent: #7a8b6e;
+  --border: #ddd5c8;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: system-ui, -apple-system, sans-serif;
+  line-height: 1.6;
+}

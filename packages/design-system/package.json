@@ -1,0 +1,25 @@
+{
+  "name": "@neurolife/design-system",
+  "version": "0.1.0",
+  "private": true,
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src/"
+  },
+  "dependencies": {
+    "@neurolife/shared": "workspace:*"
+  },
+  "peerDependencies": {
+    "react": ">=18"
+  },
+  "devDependencies": {
+    "@neurolife/config": "workspace:*",
+    "@types/react": "^19.1.0",
+    "eslint": "^9.28.0",
+    "react": "^19.1.0",
+    "typescript": "^5.8.3"
+  }
+}

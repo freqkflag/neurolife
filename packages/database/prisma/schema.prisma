@@ -1,0 +1,504 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum PrivacyMode {
+  FULLY_LOCAL
+  SELF_HOSTED
+  HYBRID
+  CLOUD_ASSISTED
+}
+
+enum Theme {
+  mutedDark
+  softCream
+}
+
+enum BudgetRiskLevel {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum TaskPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum AdminTaskStatus {
+  PENDING
+  IN_PROGRESS
+  DONE
+  SNOOZED
+}
+
+enum HousingItemType {
+  RENT
+  UTILITY
+  APPLICATION
+  MAINTENANCE
+  MOVE
+}
+
+enum HousingStatus {
+  PENDING
+  PAID
+  OVERDUE
+  SUBMITTED
+  RESOLVED
+}
+
+enum IncomeFrequency {
+  WEEKLY
+  BIWEEKLY
+  MONTHLY
+  IRREGULAR
+}
+
+enum BillingCycle {
+  WEEKLY
+  MONTHLY
+  YEARLY
+}
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  deletedAt DateTime?
+
+  profile              Profile?
+  capacityEntries      CapacityEntry[]
+  sensoryEntries       SensoryEntry[]
+  tasks                Task[]
+  routines             Routine[]
+  budgetAccounts       BudgetAccount[]
+  incomeSources        IncomeSource[]
+  bills                Bill[]
+  subscriptions        Subscription[]
+  debts                Debt[]
+  pawnLoans            PawnLoan[]
+  transactions         Transaction[]
+  documents            Document[]
+  appointments         Appointment[]
+  adminTasks           AdminTask[]
+  disabilityNotes      DisabilityNote[]
+  symptomTimeline      SymptomTimelineEntry[]
+  foodItems            FoodItem[]
+  mealPlans            MealPlan[]
+  groceryItems         GroceryItem[]
+  housingItems         HousingItem[]
+  supportContacts      SupportContact[]
+  aiInteractions       AIInteraction[]
+  notificationRules    NotificationRule[]
+  auditLogs            AuditLog[]
+  savingsGoals         SavingsGoal[]
+  spendingCategories   SpendingCategory[]
+  refreshTokens        RefreshToken[]
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  token     String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+}
+
+model Profile {
+  id                   String      @id @default(uuid())
+  userId               String      @unique
+  user                 User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  displayName          String?
+  privacyMode          PrivacyMode @default(HYBRID)
+  theme                Theme       @default(mutedDark)
+  quietHoursStart      String?
+  quietHoursEnd        String?
+  shutdownMode         Boolean     @default(false)
+  diabetesAwareMeals   Boolean     @default(false)
+  medicationReminders  Boolean     @default(false)
+  currentBalance       Float       @default(0)
+  safeToSpend          Float       @default(0)
+  paydayDate           DateTime?
+  rentDueDate          DateTime?
+  emergencyShortfall   Float       @default(0)
+  budgetRiskLevel      BudgetRiskLevel @default(LOW)
+  moneyStressLevel     Int         @default(0)
+  updatedAt            DateTime    @updatedAt
+}
+
+model CapacityEntry {
+  id            String   @id @default(uuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  score         Int
+  sleepHours    Float?
+  sleepQuality  Int?
+  manualCheckIn Boolean  @default(false)
+  createdAt     DateTime @default(now())
+}
+
+model SensoryEntry {
+  id                String   @id @default(uuid())
+  userId            String
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  load              Int
+  ambientNoise      Float?
+  lightLevel        Float?
+  screenTimeMinutes Int?
+  motionLevel       Float?
+  createdAt         DateTime @default(now())
+}
+
+model Task {
+  id             String       @id @default(uuid())
+  userId         String
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title          String
+  description    String?
+  priority       TaskPriority @default(MEDIUM)
+  capacityDemand Int          @default(50)
+  sensoryDemand  Int          @default(30)
+  dueDate        DateTime?
+  completedAt    DateTime?
+  isPinned       Boolean      @default(false)
+  tinyStep       String?
+  routineId      String?
+  routine        Routine?     @relation(fields: [routineId], references: [id])
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  deletedAt      DateTime?
+}
+
+model Routine {
+  id          String        @id @default(uuid())
+  userId      String
+  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name        String
+  description String?
+  isActive    Boolean       @default(true)
+  steps       RoutineStep[]
+  tasks       Task[]
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  deletedAt   DateTime?
+}
+
+model RoutineStep {
+  id              String    @id @default(uuid())
+  routineId       String
+  routine         Routine   @relation(fields: [routineId], references: [id], onDelete: Cascade)
+  order           Int
+  title           String
+  durationMinutes Int?
+  completedAt     DateTime?
+}
+
+model BudgetAccount {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name      String
+  balance   Float    @default(0)
+  isPrimary Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model IncomeSource {
+  id          String          @id @default(uuid())
+  userId      String
+  user        User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name        String
+  amount      Float
+  frequency   IncomeFrequency
+  nextPayDate DateTime?
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  deletedAt   DateTime?
+}
+
+model Bill {
+  id          String    @id @default(uuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name        String
+  amount      Float
+  dueDate     DateTime
+  category    String
+  isPaid      Boolean   @default(false)
+  isProtected Boolean   @default(false)
+  priority    Int       @default(5)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+}
+
+model Subscription {
+  id              String       @id @default(uuid())
+  userId          String
+  user            User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name            String
+  amount          Float
+  billingCycle    BillingCycle
+  nextBillingDate DateTime?
+  isActive        Boolean      @default(true)
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+  deletedAt       DateTime?
+}
+
+model Debt {
+  id             String    @id @default(uuid())
+  userId         String
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name           String
+  balance        Float
+  minimumPayment Float
+  interestRate   Float?
+  dueDate        DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  deletedAt      DateTime?
+}
+
+model PawnLoan {
+  id              String    @id @default(uuid())
+  userId          String
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  itemDescription String
+  loanAmount      Float
+  paybackAmount   Float
+  dueDate         DateTime
+  isRedeemed      Boolean   @default(false)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  deletedAt       DateTime?
+}
+
+model Transaction {
+  id          String   @id @default(uuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  amount      Float
+  description String
+  category    String?
+  date        DateTime
+  isIncome    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+}
+
+model SpendingCategory {
+  id          String   @id @default(uuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name        String
+  budgetLimit Float?
+  spent       Float    @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model SavingsGoal {
+  id            String   @id @default(uuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name          String
+  targetAmount  Float
+  currentAmount Float    @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model Document {
+  id             String               @id @default(uuid())
+  userId         String
+  user           User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title          String
+  fileName       String
+  mimeType       String
+  storageKey     String
+  isScaryMail    Boolean              @default(false)
+  aiConsentGiven Boolean              @default(false)
+  uploadedAt     DateTime             @default(now())
+  deletedAt      DateTime?
+  extractions    DocumentExtraction[]
+  adminTasks     AdminTask[]
+}
+
+model DocumentExtraction {
+  id              String   @id @default(uuid())
+  documentId      String
+  document        Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  summary         String
+  deadline        DateTime?
+  requiredActions String[]
+  extractedAt     DateTime @default(now())
+}
+
+model AdminTask {
+  id          String          @id @default(uuid())
+  userId      String
+  user        User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title       String
+  description String?
+  deadline    DateTime?
+  status      AdminTaskStatus @default(PENDING)
+  category    String?
+  documentId  String?
+  document    Document?       @relation(fields: [documentId], references: [id])
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  deletedAt   DateTime?
+}
+
+model Appointment {
+  id                  String   @id @default(uuid())
+  userId              String
+  user                User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title               String
+  provider            String?
+  dateTime            DateTime
+  location            String?
+  prepNotes           String?
+  questionsToAsk      String[]
+  travelBufferMinutes Int      @default(30)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+  deletedAt           DateTime?
+}
+
+model DisabilityNote {
+  id           String   @id @default(uuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title        String
+  content      String
+  providerName String?
+  date         DateTime
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  deletedAt    DateTime?
+}
+
+model SymptomTimelineEntry {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  date      DateTime
+  symptoms  String[]
+  severity  Int
+  notes     String?
+  createdAt DateTime @default(now())
+}
+
+model FoodItem {
+  id        String    @id @default(uuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name      String
+  quantity  Float?
+  unit      String?
+  inPantry  Boolean   @default(true)
+  expiresAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+}
+
+model MealPlan {
+  id          String   @id @default(uuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name        String
+  description String?
+  spoonLevel  Int      @default(1)
+  isZeroCook  Boolean  @default(false)
+  ingredients String[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model GroceryItem {
+  id          String   @id @default(uuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name        String
+  quantity    Float?
+  isPurchased Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model HousingItem {
+  id        String          @id @default(uuid())
+  userId    String
+  user      User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      HousingItemType
+  title     String
+  amount    Float?
+  dueDate   DateTime?
+  status    HousingStatus   @default(PENDING)
+  notes     String?
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+  deletedAt DateTime?
+}
+
+model SupportContact {
+  id          String  @id @default(uuid())
+  userId      String
+  user        User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name        String
+  relationship String?
+  phone       String?
+  email       String?
+  isEmergency Boolean @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model AIInteraction {
+  id           String   @id @default(uuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  agentType    String
+  input        String
+  output       String
+  privacyMode  String
+  consentGiven Boolean  @default(false)
+  createdAt    DateTime @default(now())
+}
+
+model NotificationRule {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      String
+  enabled   Boolean  @default(true)
+  quietOnly Boolean  @default(false)
+  snoozeUntil DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  action    String
+  entity    String
+  entityId  String?
+  metadata  Json?
+  createdAt DateTime @default(now())
+}
