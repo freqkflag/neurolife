@@ -1,5 +1,21 @@
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
 
+export class ApiError extends Error {
+  constructor(
+    public status: number,
+    message: string,
+  ) {
+    super(message);
+    this.name = 'ApiError';
+  }
+}
+
+function handleUnauthorized(): void {
+  if (typeof window === 'undefined') return;
+  localStorage.removeItem('neurolife_access_token');
+  window.location.href = '/login';
+}
+
 export async function apiFetch<T>(
   path: string,
   options?: RequestInit & { token?: string },
@@ -10,7 +26,17 @@ export async function apiFetch<T>(
   };
   if (options?.token) headers.Authorization = `Bearer ${options.token}`;
 
-  const res = await fetch(`${API_URL}${path}`, { ...options, headers });
-  if (!res.ok) throw new Error(`API error: ${res.status}`);
+  const { token: _token, ...fetchOptions } = options ?? {};
+  const res = await fetch(`${API_URL}${path}`, { ...fetchOptions, headers });
+
+  if (res.status === 401) {
+    handleUnauthorized();
+    throw new ApiError(401, 'Unauthorized');
+  }
+  if (!res.ok) throw new ApiError(res.status, `API error: ${res.status}`);
   return res.json();
+}
+
+export function getApiBaseUrl(): string {
+  return API_URL;
 }
