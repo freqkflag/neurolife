@@ -131,7 +131,10 @@ model Profile {
   currentBalance       Float       @default(0)
   safeToSpend          Float       @default(0)
   paydayDate           DateTime?
+  expectedPaydayAmount Float       @default(0)
   rentDueDate          DateTime?
+  rentAmount           Float       @default(0)
+  spendingBuffer       Float       @default(0)
   emergencyShortfall   Float       @default(0)
   budgetRiskLevel      BudgetRiskLevel @default(LOW)
   moneyStressLevel     Int         @default(0)
@@ -329,6 +332,9 @@ model Document {
   fileName       String
   mimeType       String
   storageKey     String
+  docType        String               @default("other")
+  deadline       DateTime?
+  notes          String?
   isScaryMail    Boolean              @default(false)
   aiConsentGiven Boolean              @default(false)
   uploadedAt     DateTime             @default(now())

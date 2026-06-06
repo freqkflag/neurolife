@@ -6,5 +6,6 @@ import { AuditService } from '../common/audit.service';
 @Module({
   controllers: [AiController],
   providers: [AiService, AuditService],
+  exports: [AiService],
 })
 export class AiModule {}

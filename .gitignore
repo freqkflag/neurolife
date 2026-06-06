@@ -13,4 +13,5 @@ coverage/
 apps/mobile/ios/
 apps/mobile/android/
 apps/api/dist/
+storage/
 packages/database/prisma/migrations/**/migration_lock.toml

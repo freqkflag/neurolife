@@ -40,3 +40,25 @@ export async function apiFetch<T>(
 export function getApiBaseUrl(): string {
   return API_URL;
 }
+
+export async function apiUpload<T>(
+  path: string,
+  formData: FormData,
+  token?: string,
+): Promise<T> {
+  const headers: Record<string, string> = {};
+  if (token) headers.Authorization = `Bearer ${token}`;
+
+  const res = await fetch(`${API_URL}${path}`, {
+    method: 'POST',
+    headers,
+    body: formData,
+  });
+
+  if (res.status === 401) {
+    handleUnauthorized();
+    throw new ApiError(401, 'Unauthorized');
+  }
+  if (!res.ok) throw new ApiError(res.status, `API error: ${res.status}`);
+  return res.json();
+}

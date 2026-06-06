@@ -1,9 +1,25 @@
 'use client';
 
-import { useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { TinyNextActionCard } from '@neurolife/design-system';
 import { apiFetch } from '@/lib/api';
-import { AuthGate, Field, PageShell, SubmitButton, cardClass, cardStyle, inputClass, inputStyle, preventDefaultSubmit } from './ui';
+import {
+  AuthGate,
+  Field,
+  PageShell,
+  SubmitButton,
+  cardClass,
+  cardStyle,
+  inputClass,
+  inputStyle,
+  preventDefaultSubmit,
+} from './ui';
+
+interface Document {
+  id: string;
+  title: string;
+  fileName: string;
+}
 
 interface AiCard {
   title: string;
@@ -11,7 +27,7 @@ interface AiCard {
   type?: string;
 }
 
-interface AiResult {
+interface AiChatResult {
   specialist: string;
   output: {
     summary: string;
@@ -20,18 +36,42 @@ interface AiResult {
   };
 }
 
+interface AnalyzeResult {
+  summary: string;
+  tinyNextAction: string;
+  requiredAction?: string;
+  deadlineText?: string | null;
+  status?: string;
+  cards?: AiCard[];
+}
+
 function ScaryMailContent({ token }: { token: string }) {
   const [text, setText] = useState('');
-  const [result, setResult] = useState<AiResult['output'] | null>(null);
+  const [documents, setDocuments] = useState<Document[]>([]);
+  const [selectedDocId, setSelectedDocId] = useState('');
+  const [result, setResult] = useState<AnalyzeResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const summarize = async () => {
+  const loadDocs = useCallback(async () => {
+    try {
+      const res = await apiFetch<Document[]>('/documents', { token });
+      setDocuments(res);
+    } catch {
+      setDocuments([]);
+    }
+  }, [token]);
+
+  useEffect(() => {
+    void loadDocs();
+  }, [loadDocs]);
+
+  const summarizePasted = async () => {
     if (!text.trim()) return;
     setLoading(true);
     setError(null);
     try {
-      const res = await apiFetch<AiResult>('/ai/chat', {
+      const res = await apiFetch<AiChatResult>('/ai/chat', {
         method: 'POST',
         token,
         body: JSON.stringify({
@@ -40,9 +80,36 @@ function ScaryMailContent({ token }: { token: string }) {
           consentGiven: true,
         }),
       });
-      setResult(res.output);
+      setResult({
+        summary: res.output.summary,
+        tinyNextAction: res.output.tinyNextAction,
+        requiredAction: res.output.cards?.find((c) => /action|required/i.test(c.title))?.body,
+        deadlineText: res.output.cards?.find((c) => c.type === 'deadline' || /deadline/i.test(c.title))?.body,
+        cards: res.output.cards,
+      });
     } catch {
       setError('Could not summarize. Check API connection or try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const analyzeSelected = async () => {
+    if (!selectedDocId) return;
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await apiFetch<AnalyzeResult>(`/documents/${selectedDocId}/analyze`, {
+        method: 'POST',
+        token,
+        body: JSON.stringify({}),
+      });
+      setResult(res);
+      if (res.status === 'pending_extraction') {
+        setText('');
+      }
+    } catch {
+      setError('Could not analyze document.');
     } finally {
       setLoading(false);
     }
@@ -55,11 +122,11 @@ function ScaryMailContent({ token }: { token: string }) {
     <PageShell
       title="Scary Mail"
       purpose="Turn overwhelming letters into plain facts and one small step."
-      status={result ? 'Summary ready — read one card at a time.' : 'Paste text from a letter or email.'}
+      status={result ? 'Summary ready — read one card at a time.' : 'Paste text or pick an uploaded document.'}
       tinyAction={result?.tinyNextAction ?? 'Paste the first paragraph only, if that feels easier.'}
     >
       <form
-        onSubmit={preventDefaultSubmit(summarize)}
+        onSubmit={preventDefaultSubmit(summarizePasted)}
         className={`${cardClass} mb-6 flex flex-col gap-3`}
         style={cardStyle}
       >
@@ -73,8 +140,33 @@ function ScaryMailContent({ token }: { token: string }) {
             placeholder="Paste the scary part here. You do not have to read it all at once."
           />
         </Field>
-        <SubmitButton loading={loading} label="Summarize safely" />
+        <SubmitButton loading={loading && !selectedDocId} label="Summarize pasted text" />
       </form>
+
+      {documents.length > 0 && (
+        <form
+          onSubmit={preventDefaultSubmit(analyzeSelected)}
+          className={`${cardClass} mb-6 flex flex-col gap-3`}
+          style={cardStyle}
+        >
+          <Field label="Or analyze an uploaded document">
+            <select
+              value={selectedDocId}
+              onChange={(e) => setSelectedDocId(e.target.value)}
+              className={inputClass}
+              style={inputStyle}
+            >
+              <option value="">Choose a document…</option>
+              {documents.map((doc) => (
+                <option key={doc.id} value={doc.id}>
+                  {doc.title} ({doc.fileName})
+                </option>
+              ))}
+            </select>
+          </Field>
+          <SubmitButton loading={loading && !!selectedDocId} label="Analyze selected document" />
+        </form>
+      )}
 
       {error && (
         <p className="text-sm mb-4" style={{ color: 'var(--text-muted)' }}>
@@ -94,15 +186,27 @@ function ScaryMailContent({ token }: { token: string }) {
             <p className="text-xs uppercase tracking-wide mb-2" style={{ color: 'var(--text-muted)' }}>
               Deadlines
             </p>
-            <p className="text-sm">{deadlineCard?.body ?? 'No clear deadline found — check dates in the original.'}</p>
+            <p className="text-sm">
+              {result.deadlineText ?? deadlineCard?.body ?? 'No clear deadline found — check dates in the original.'}
+            </p>
           </div>
           <div className={cardClass} style={cardStyle}>
             <p className="text-xs uppercase tracking-wide mb-2" style={{ color: 'var(--text-muted)' }}>
               Required action
             </p>
-            <p className="text-sm">{actionCard?.body ?? result.cards?.[0]?.body ?? 'Review the summary and note any dates.'}</p>
+            <p className="text-sm">
+              {result.requiredAction ?? actionCard?.body ?? result.cards?.[0]?.body ?? 'Review the summary and note any dates.'}
+            </p>
           </div>
-          <TinyNextActionCard action={result.tinyNextAction} />
+          {result.status === 'pending_extraction' ? (
+            <div className={cardClass} style={cardStyle}>
+              <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
+                File saved. Text extraction for this file type is next.
+              </p>
+            </div>
+          ) : (
+            <TinyNextActionCard action={result.tinyNextAction} />
+          )}
         </div>
       )}
     </PageShell>

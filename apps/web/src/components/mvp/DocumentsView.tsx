@@ -3,13 +3,15 @@
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 import { CalmLoading } from '@neurolife/design-system';
-import { apiFetch } from '@/lib/api';
+import { apiFetch, apiUpload } from '@/lib/api';
 import {
   AuthGate,
   Field,
   ItemList,
   PageShell,
   SubmitButton,
+  btnClass,
+  btnStyle,
   cardClass,
   cardStyle,
   formatDate,
@@ -18,13 +20,32 @@ import {
   preventDefaultSubmit,
 } from './ui';
 
+interface DocumentExtraction {
+  summary: string;
+  deadline?: string | null;
+  requiredActions?: string[];
+  extractedAt?: string;
+}
+
 interface Document {
   id: string;
   title: string;
   fileName: string;
+  docType: string;
+  deadline?: string | null;
+  notes?: string | null;
   isScaryMail: boolean;
   uploadedAt: string;
-  extractions?: Array<{ summary: string; deadline?: string | null }>;
+  extractions?: DocumentExtraction[];
+}
+
+interface AnalyzeResult {
+  summary: string;
+  tinyNextAction?: string;
+  requiredAction?: string;
+  deadlineText?: string | null;
+  deadline?: string | null;
+  status?: string;
 }
 
 function DocumentsContent({ token }: { token: string }) {
@@ -34,7 +55,10 @@ function DocumentsContent({ token }: { token: string }) {
   const [docType, setDocType] = useState('letter');
   const [deadline, setDeadline] = useState('');
   const [notes, setNotes] = useState('');
-  const [saving, setSaving] = useState(false);
+  const [file, setFile] = useState<File | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [analyzingId, setAnalyzingId] = useState<string | null>(null);
+  const [analysis, setAnalysis] = useState<Record<string, AnalyzeResult>>({});
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
@@ -54,31 +78,50 @@ function DocumentsContent({ token }: { token: string }) {
     void load();
   }, [load]);
 
-  const addDocument = async () => {
-    if (!title.trim()) return;
-    setSaving(true);
+  const uploadDocument = async () => {
+    if (!file) {
+      setError('Choose a file to upload.');
+      return;
+    }
+    setUploading(true);
+    setError(null);
     try {
-      const slug = title.trim().toLowerCase().replace(/\s+/g, '-');
-      await apiFetch('/documents', {
-        method: 'POST',
-        token,
-        body: JSON.stringify({
-          title: title.trim(),
-          fileName: `${slug}.txt`,
-          mimeType: 'text/plain',
-          storageKey: `local://${slug}-${Date.now()}`,
-          isScaryMail: docType === 'scary-mail',
-          aiConsentGiven: true,
-        }),
-      });
+      const form = new FormData();
+      form.append('file', file);
+      if (title.trim()) form.append('title', title.trim());
+      form.append('docType', docType);
+      if (deadline) form.append('deadline', deadline);
+      if (notes.trim()) form.append('notes', notes.trim());
+      form.append('isScaryMail', String(docType === 'scary-mail'));
+
+      await apiUpload('/documents/upload', form, token);
       setTitle('');
       setDeadline('');
       setNotes('');
+      setFile(null);
       await load();
     } catch {
-      setError('Could not save document metadata.');
+      setError('Could not upload document. Check file type (PDF, PNG, JPG, TXT, MD) and size (max 10MB).');
     } finally {
-      setSaving(false);
+      setUploading(false);
+    }
+  };
+
+  const analyzeDocument = async (docId: string) => {
+    setAnalyzingId(docId);
+    setError(null);
+    try {
+      const res = await apiFetch<AnalyzeResult>(`/documents/${docId}/analyze`, {
+        method: 'POST',
+        token,
+        body: JSON.stringify({}),
+      });
+      setAnalysis((prev) => ({ ...prev, [docId]: res }));
+      await load();
+    } catch {
+      setError('Could not analyze this document.');
+    } finally {
+      setAnalyzingId(null);
     }
   };
 
@@ -87,9 +130,9 @@ function DocumentsContent({ token }: { token: string }) {
   return (
     <PageShell
       title="Document Vault"
-      purpose="Store important paperwork metadata in one calm place."
+      purpose="Upload important paperwork and get calm summaries when you're ready."
       status={`${docs.length} document${docs.length === 1 ? '' : 's'} saved`}
-      tinyAction={docs.length ? 'Open one document and note its deadline.' : 'Add your most urgent letter first.'}
+      tinyAction={docs.length ? 'Analyze your most urgent document.' : 'Upload your most urgent letter first.'}
     >
       {error && (
         <p className="text-sm mb-4" style={{ color: 'var(--text-muted)' }}>
@@ -107,13 +150,28 @@ function DocumentsContent({ token }: { token: string }) {
       </div>
 
       <form
-        onSubmit={preventDefaultSubmit(addDocument)}
+        onSubmit={preventDefaultSubmit(uploadDocument)}
         className={`${cardClass} mb-8 flex flex-col gap-3 max-w-lg`}
         style={cardStyle}
       >
-        <p className="font-medium text-sm">Add document metadata</p>
-        <Field label="Title">
-          <input value={title} onChange={(e) => setTitle(e.target.value)} className={inputClass} style={inputStyle} required />
+        <p className="font-medium text-sm">Upload a document</p>
+        <Field label="File (PDF, PNG, JPG, TXT, MD — max 10MB)">
+          <input
+            type="file"
+            accept=".pdf,.png,.jpg,.jpeg,.txt,.md,text/plain,text/markdown,application/pdf,image/png,image/jpeg"
+            onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+            className={inputClass}
+            style={inputStyle}
+            required
+          />
+        </Field>
+        {file && (
+          <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+            Selected: {file.name} ({(file.size / 1024).toFixed(1)} KB)
+          </p>
+        )}
+        <Field label="Title (optional)">
+          <input value={title} onChange={(e) => setTitle(e.target.value)} className={inputClass} style={inputStyle} placeholder="Defaults to filename" />
         </Field>
         <Field label="Type">
           <select value={docType} onChange={(e) => setDocType(e.target.value)} className={inputClass} style={inputStyle}>
@@ -138,29 +196,84 @@ function DocumentsContent({ token }: { token: string }) {
             placeholder="What is this about?"
           />
         </Field>
-        <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-          File upload coming soon — metadata is saved now.
-        </p>
-        <SubmitButton loading={saving} label="Save document" />
+        <SubmitButton loading={uploading} label="Upload document" />
       </form>
 
       <ItemList
         items={docs}
-        empty="No documents yet. Add a title to start your vault."
-        render={(doc: Document) => (
-          <div className="text-sm">
-            <p className="font-medium">{doc.title}</p>
-            <p style={{ color: 'var(--text-muted)' }}>
-              {doc.fileName} · added {formatDate(doc.uploadedAt)}
-              {doc.isScaryMail ? ' · scary mail' : ''}
-            </p>
-            {doc.extractions?.[0] && (
-              <p className="mt-2" style={{ color: 'var(--text-muted)' }}>
-                {doc.extractions[0].summary}
-              </p>
-            )}
-          </div>
-        )}
+        empty="Upload your most urgent letter first."
+        render={(doc: Document) => {
+          const latest = doc.extractions?.[0];
+          const result = analysis[doc.id];
+          return (
+            <div className="text-sm space-y-3">
+              <div className="flex flex-wrap justify-between gap-2">
+                <div>
+                  <p className="font-medium">{doc.title}</p>
+                  <p style={{ color: 'var(--text-muted)' }}>
+                    {doc.fileName} · {doc.docType} · uploaded {formatDate(doc.uploadedAt)}
+                  </p>
+                  {doc.deadline && (
+                    <p style={{ color: 'var(--text-muted)' }}>Deadline: {formatDate(doc.deadline)}</p>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  disabled={analyzingId === doc.id}
+                  onClick={() => void analyzeDocument(doc.id)}
+                  className={btnClass}
+                  style={btnStyle}
+                >
+                  {analyzingId === doc.id ? 'Analyzing…' : 'Analyze'}
+                </button>
+              </div>
+
+              {(result || latest) && (
+                <div className="rounded-lg border p-3 space-y-2" style={{ borderColor: 'var(--border)' }}>
+                  <p>
+                    <span className="text-xs uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>
+                      Summary
+                    </span>
+                    <br />
+                    {result?.summary ?? latest?.summary}
+                  </p>
+                  {(result?.deadlineText || result?.deadline || latest?.deadline) && (
+                    <p>
+                      <span className="text-xs uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>
+                        Deadline
+                      </span>
+                      <br />
+                      {result?.deadlineText ?? formatDate(result?.deadline ?? latest?.deadline)}
+                    </p>
+                  )}
+                  {(result?.requiredAction || latest?.requiredActions?.[0]) && (
+                    <p>
+                      <span className="text-xs uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>
+                        Required action
+                      </span>
+                      <br />
+                      {result?.requiredAction ?? latest?.requiredActions?.[0]}
+                    </p>
+                  )}
+                  {result?.tinyNextAction && (
+                    <p>
+                      <span className="text-xs uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>
+                        One tiny next action
+                      </span>
+                      <br />
+                      {result.tinyNextAction}
+                    </p>
+                  )}
+                  {result?.status === 'pending_extraction' && (
+                    <p style={{ color: 'var(--text-muted)' }}>
+                      File saved. Text extraction for this file type is next.
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
+          );
+        }}
       />
     </PageShell>
   );
