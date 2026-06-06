@@ -28,7 +28,12 @@ export function resolveConflict(
     };
   }
 
-  return null;
+  return {
+    entityType: mutation.entityType,
+    entityId: mutation.entityId,
+    clientVersion: mutation.payload,
+    serverVersion: serverData,
+  };
 }
 
 export function mergeSimpleField(

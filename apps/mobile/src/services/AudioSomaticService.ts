@@ -30,6 +30,20 @@ export function getMutedHighs(): boolean {
   return mutedHighs;
 }
 
+function getClosestBPMTrack(bpm: number): string {
+  const targetBPMs = [60, 80, 100, 120, 140, 160];
+  let closest = 80;
+  let minDiff = Infinity;
+  for (const b of targetBPMs) {
+    const diff = Math.abs(b - bpm);
+    if (diff < minDiff) {
+      minDiff = diff;
+      closest = b;
+    }
+  }
+  return BPM_TRACKS[closest] ?? 'downtempo';
+}
+
 async function crossfadeToBPM(bpm: number): Promise<void> {
   if (currentSound) {
     await currentSound.setVolumeAsync(0);
@@ -37,7 +51,7 @@ async function crossfadeToBPM(bpm: number): Promise<void> {
     await currentSound.unloadAsync();
   }
 
-  const trackId = BPM_TRACKS[bpm] ?? BPM_TRACKS[80];
+  const trackId = getClosestBPMTrack(bpm);
   // Placeholder: in production, load bundled audio assets
   const { sound } = await Audio.Sound.createAsync(
     { uri: `asset:/audio/${trackId}.mp3` },

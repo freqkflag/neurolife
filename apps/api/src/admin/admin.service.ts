@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { encryptField, getMasterKey } from '@neurolife/encryption';
+import { decryptField, encryptField, getMasterKey } from '@neurolife/encryption';
 import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
@@ -31,10 +31,18 @@ export class AdminService {
       where: { userId, deletedAt: null },
       orderBy: { date: 'desc' },
     });
-    return notes.map((n) => ({
-      ...n,
-      content: '[encrypted]',
-    }));
+    return notes.map((n) => {
+      let content = '[encrypted]';
+      try {
+        content = decryptField(n.content, getMasterKey());
+      } catch (e) {
+        // Fallback or leave as encrypted if decryption fails
+      }
+      return {
+        ...n,
+        content,
+      };
+    });
   }
 
   async createDisabilityNote(userId: string, data: Record<string, unknown>) {

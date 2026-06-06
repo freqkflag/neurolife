@@ -4,6 +4,12 @@ Base URL: `http://localhost:3001` (configurable via `API_PORT`).
 
 Authentication uses **Bearer JWT** on protected routes unless noted.
 
+## Health
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET | `/health` | — | API liveness; includes database connectivity |
+
 ## Authentication
 
 | Method | Path | Auth | Description |

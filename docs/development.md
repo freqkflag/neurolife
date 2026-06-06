@@ -12,11 +12,16 @@
 cp .env.example .env
 # Edit secrets before any non-local deployment
 
+# Symlinks so Nest (apps/api) and Prisma (packages/database) load the root .env:
+ln -sf ../../.env apps/api/.env
+ln -sf ../../.env packages/database/.env
+
 docker compose -f services/docker-compose.yml up -d
 
 pnpm install
 pnpm db:generate
-pnpm db:migrate
+pnpm db:push    # or pnpm db:migrate once migration files exist
+pnpm db:seed    # creates dev@neurolife.local / dev-neurolife
 ```
 
 Wait for healthchecks: Postgres `:5432`, Redis `:6379`, MinIO `:9000` (console `:9001`).
@@ -54,9 +59,11 @@ pnpm --filter @neurolife/api dev
 # Web — http://localhost:3000
 pnpm --filter @neurolife/web dev
 
-# Mobile — Expo dev client
+# Mobile — Expo dev client (Metro on port 8082; 8081 often in use)
 pnpm --filter @neurolife/mobile dev
 ```
+
+API health check: `curl http://localhost:3001/health`
 
 ### Mobile native builds
 

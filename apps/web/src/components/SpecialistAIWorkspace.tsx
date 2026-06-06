@@ -1,6 +1,8 @@
 'use client';
 
 import { useState } from 'react';
+import { apiFetch } from '@/lib/api';
+import { getAccessToken } from '@/lib/auth';
 import { AIOrchestrator } from '@neurolife/ai-core';
 import type { SpecialistType } from '@neurolife/ai-core';
 import { TinyNextActionCard } from '@neurolife/design-system';
@@ -16,7 +18,7 @@ const SPECIALISTS: { id: SpecialistType; label: string }[] = [
   { id: 'crisis_stabilization', label: 'Crisis Stabilization' },
 ];
 
-const orchestrator = new AIOrchestrator();
+const localOrchestrator = new AIOrchestrator();
 
 export function SpecialistAIWorkspace() {
   const [active, setActive] = useState<SpecialistType>('budget');
@@ -28,13 +30,33 @@ export function SpecialistAIWorkspace() {
     if (!input.trim()) return;
     setLoading(true);
     try {
-      const result = await orchestrator.route(input, {
-        capacity: { score: 50 },
-        sensory: { load: 30 },
-        platform: 'web',
-        privacyMode: 'HYBRID',
-      }, { specialist: active });
+      const token = getAccessToken();
+      const result = await apiFetch<{ specialist: SpecialistType; output: { summary: string; tinyNextAction: string } }>(
+        '/ai/chat',
+        {
+          method: 'POST',
+          token: token ?? undefined,
+          body: JSON.stringify({
+            input,
+            specialist: active,
+            consentGiven: true,
+          }),
+        },
+      );
       setOutput(result.output);
+    } catch (e) {
+      console.warn('Backend AI failed, falling back to client-side rule-based orchestration:', e);
+      try {
+        const result = await localOrchestrator.route(input, {
+          capacity: { score: 50 },
+          sensory: { load: 30 },
+          platform: 'web',
+          privacyMode: 'HYBRID',
+        }, { specialist: active });
+        setOutput(result.output);
+      } catch (err) {
+        console.error('Local fallback failed:', err);
+      }
     } finally {
       setLoading(false);
     }

@@ -11,11 +11,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - API build: type audit log `metadata` as `Prisma.InputJsonValue` for Prisma client compatibility.
 - Web build: align React 18.3.1 across the monorepo (Expo + Next.js) via `pnpm.overrides` to fix `/404` prerender hook errors.
+- API runtime: load `DATABASE_URL` from monorepo root `.env` via `ConfigModule` path resolution and package symlinks.
+- Mobile dev: default Expo Metro port `8082` when `8081` is occupied.
 
 ### Added
 
 - Project documentation: `CONTRIBUTING.md`, `SECURITY.md`, and `docs/` guides.
 - Root `pnpm-lock.yaml` for reproducible installs.
+- `GET /health` endpoint with database connectivity check.
+- `pnpm db:seed` — local dev user `dev@neurolife.local`.
+- Web `/login` and live dashboard wiring for capacity, safe-to-spend, and tasks.
 
 ## [0.1.0] - 2026-06-06
 

@@ -38,16 +38,21 @@ docker compose -f services/docker-compose.yml up -d
 
 pnpm install
 pnpm db:generate
-pnpm db:migrate
+pnpm db:push
+pnpm db:seed
 
 pnpm dev
 ```
+
+After clone, symlink env for API/Prisma: `ln -sf ../../.env apps/api/.env && ln -sf ../../.env packages/database/.env`
 
 | App | URL / command |
 |-----|----------------|
 | Web (Command Center) | http://localhost:3000 |
 | API | http://localhost:3001 |
-| Mobile (Pocket) | `pnpm --filter @neurolife/mobile dev` |
+| Mobile (Pocket) | `pnpm --filter @neurolife/mobile dev` (Metro **8082**) |
+| API health | http://localhost:3001/health |
+| Dev login | `dev@neurolife.local` / `dev-neurolife` after `pnpm db:seed` |
 
 ### Build & verify
 

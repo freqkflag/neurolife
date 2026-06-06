@@ -10,6 +10,7 @@
     "db:generate": "pnpm --filter @neurolife/database generate",
     "db:migrate": "pnpm --filter @neurolife/database migrate",
     "db:push": "pnpm --filter @neurolife/database push",
+    "db:seed": "pnpm --filter @neurolife/database seed",
     "format": "prettier --write \"**/*.{ts,tsx,js,json,md}\""
   },
   "devDependencies": {
