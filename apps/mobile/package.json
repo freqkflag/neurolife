@@ -8,7 +8,9 @@
     "build": "tsc --noEmit",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src/",
-    "prebuild": "expo prebuild"
+    "prebuild": "expo prebuild",
+    "android": "expo run:android",
+    "ios": "expo run:ios"
   },
   "dependencies": {
     "@neurolife/ai-core": "workspace:*",
