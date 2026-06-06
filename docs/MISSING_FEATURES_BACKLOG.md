@@ -40,11 +40,14 @@ Legend: `[ ]` not started · `[~]` partial · `[x]` done
 
 ## Documents / scary mail
 
-- [~] File upload (TXT, MD, PDF, PNG, JPG)
-- [~] Metadata (title, type, deadline, notes)
-- [~] Analyze TXT/MD via admin_paperwork agent
-- [ ] PDF text extraction
-- [ ] Image OCR
+- [x] File upload (TXT, MD, PDF, PNG, JPG)
+- [x] Metadata (title, type, deadline, notes)
+- [x] Analyze TXT/MD via admin_paperwork agent (structured cards)
+- [x] PDF text extraction (`pdf-parse` — text-layer PDFs)
+- [x] Image OCR (`tesseract.js` — PNG/JPG)
+- [x] Extract + analyze API (`POST /extract`, `POST /analyze`, `GET /extractions`)
+- [x] Scary mail paste analysis (`POST /documents/analyze-text`)
+- [ ] Scanned PDF OCR (image-only PDFs without text layer)
 - [ ] Document download
 - [ ] Document delete (soft + file wipe)
 - [ ] Link document → admin task

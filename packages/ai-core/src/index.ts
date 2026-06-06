@@ -13,3 +13,4 @@ export * from './agents/HousingStabilityAgent';
 export * from './agents/TaskRoutineAgent';
 export * from './agents/RSDCommunicationAgent';
 export * from './agents/CrisisStabilizationAgent';
+export * from './utils/documentTextAnalysis';

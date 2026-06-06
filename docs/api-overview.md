@@ -42,7 +42,20 @@ Accounts, income, bills, subscriptions, debts, transactions, and **safe-to-spend
 
 ### Documents — `/documents`
 
-Metadata in Postgres; file bytes in MinIO via presigned upload/download URLs.
+Metadata in Postgres; file bytes stored locally under `storage/documents/{userId}/` (dev). Presigned MinIO upload available via `POST /documents/upload-url` but web uses multipart upload.
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/documents` | List documents with latest extractions |
+| POST | `/documents/upload` | Multipart upload (PDF, PNG, JPG, TXT, MD — max 10MB) |
+| POST | `/documents/analyze-text` | `{ content, documentId? }` — paste scary-mail text; returns structured cards |
+| GET | `/documents/:id/extractions` | Extraction history for a document |
+| POST | `/documents/:id/extract` | Extract text from stored file (`pdf-parse` / `tesseract.js` / direct read) |
+| POST | `/documents/:id/analyze` | Extract (if needed) + `admin_paperwork` analysis; persists `DocumentExtraction` |
+
+Supported extraction: **TXT/MD** (direct), **PDF** (text layer via `pdf-parse`), **PNG/JPG** (OCR via `tesseract.js`). Scanned PDFs without a text layer return `ocr_unavailable` — paste into Scary Mail or wait for future OCR pass.
+
+Privacy: cloud AI only when `Profile.privacyMode` allows and `aiConsentGiven` / consent flags are set; otherwise rule-based local document analysis.
 
 ### Admin — `/admin`
 

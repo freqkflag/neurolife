@@ -38,8 +38,8 @@ Auth: JWT in `localStorage` (`neurolife_access_token`). Unauthenticated users se
 | `/budget/safe-to-spend` | Safe-to-spend breakdown | **Good** | Read-only + explain | `GET /budget/safe-to-spend` | Yes | No bill-level drill-down | Medium |
 | `/budget/payday-planner` | Payday planning | **Good** | Save plan, add bills | `GET/POST /budget/payday-plan`, `POST /budget/bills` | Yes | No income source sync; no bill edit/delete | High |
 | `/bills` | Bill tracker | **Good** | Add bill form | `GET /budget`, `POST /budget/bills` | Yes | Mark paid, edit, delete, reminders | High |
-| `/documents` | Document vault | **Good** | Upload file + metadata, analyze | `GET /documents`, `POST /documents/upload`, `POST /documents/:id/analyze` | Yes | PDF/image OCR; download; delete | Critical |
-| `/scary-mail` | Scary mail summarizer | **Good** | Paste text or pick document | `POST /ai/chat`, `GET /documents`, `POST /documents/:id/analyze` | Analysis ephemeral until saved via analyze | Privacy consent UI; structured cards thin | High |
+| `/documents` | Document vault | **Good** | Upload, extract text, analyze | `GET /documents`, `POST /documents/upload`, `POST /documents/:id/extract`, `POST /documents/:id/analyze`, `GET /documents/:id/extractions` | Yes | Scanned PDF OCR; download; delete | High |
+| `/scary-mail` | Scary mail summarizer | **Good** | Paste text or pick document | `POST /documents/analyze-text`, `POST /documents/:id/analyze` | Yes (when linked to document) | Privacy consent UI | Medium |
 | `/admin` | Admin tasks + disability notes | **Good** | Add task, add note | `GET/POST /admin/tasks`, `GET/POST /admin/disability` | Yes | Task status updates; link to documents | Medium |
 | `/disability` | Disability & benefits hub | **Stub** | None | None | No | Full page; API exists under `/admin/disability` | High |
 | `/food` | Food / groceries / low-spoon | **Good** | Add grocery item | `GET /food/groceries`, `/food/pantry`, `/food/low-spoon`, `POST /food/groceries` | Yes | Pantry add/edit; meal plans; diabetes mode | Medium |
@@ -161,11 +161,13 @@ Auth legend: **Public** = no JWT; **JWT** = `@UseGuards(JwtAuthGuard)`.
 | Method | Route | DB | Works | Gaps |
 |--------|-------|-----|-------|------|
 | GET | `/documents` | Document, DocumentExtraction | Yes | — |
-| POST | `/documents/upload` | Document + local file | Yes | PDF/image extract pending |
+| POST | `/documents/upload` | Document + local file | Yes | — |
+| POST | `/documents/analyze-text` | DocumentExtraction?, AIInteraction | Yes | Paste-only (no document link unless `documentId` passed) |
+| GET | `/documents/:id/extractions` | DocumentExtraction | Yes | — |
+| POST | `/documents/:id/extract` | DocumentExtraction | Yes | Scanned PDFs may return `ocr_unavailable` |
+| POST | `/documents/:id/analyze` | DocumentExtraction, AIInteraction | Yes | Extract + analyze; rule-based locally |
 | POST | `/documents` | Document | Yes | Metadata-only legacy path |
 | POST | `/documents/upload-url` | — (S3 presign) | Partial | MinIO dev; not used by web |
-| POST | `/documents/:id/analyze` | DocumentExtraction, AIInteraction | Yes (TXT/MD) | OCR/PDF pipeline TODO |
-| POST | `/documents/:id/extract` | DocumentExtraction | Yes | Legacy; content in body |
 
 ### `ai` — JWT
 
@@ -299,7 +301,7 @@ Auth legend: **Public** = no JWT; **JWT** = `@UseGuards(JwtAuthGuard)`.
 | `rsd_communication` | Yes | Stub* | Mobile RSD screen (local, not API) |
 | `crisis_stabilization` | Yes | Stub* | Not wired to Crisis page |
 
-\*Real only when `OPENAI_API_KEY` + consent + `CLOUD_ASSISTED`/`HYBRID` privacy mode; otherwise `RuleBasedProvider` returns generic JSON.
+\*Real only when `OPENAI_API_KEY` + consent + `CLOUD_ASSISTED`/`HYBRID` privacy mode; otherwise `RuleBasedProvider` + `analyzeDocumentTextLocally()` for `admin_paperwork` document/scary-mail text.
 
 ### Privacy mode
 
@@ -310,7 +312,7 @@ Auth legend: **Public** = no JWT; **JWT** = `@UseGuards(JwtAuthGuard)`.
 
 ### Missing AI workflows
 
-- PDF/image OCR → admin_paperwork pipeline
+- Scanned PDF OCR (image-only PDFs without text layer)
 - Disability page dedicated agent UI
 - Crisis page → `crisis_stabilization` agent
 - Structured cards consistently rendered (only Scary Mail partial)

@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 import { CalmLoading } from '@neurolife/design-system';
 import { apiFetch, apiUpload } from '@/lib/api';
+import { DocumentAnalysisCards, type DocumentAnalysisResult } from './DocumentAnalysisCards';
 import {
   AuthGate,
   Field,
@@ -22,8 +23,11 @@ import {
 
 interface DocumentExtraction {
   summary: string;
+  status?: string;
   deadline?: string | null;
   requiredActions?: string[];
+  missingInfo?: string[];
+  cards?: DocumentAnalysisResult['cards'];
   extractedAt?: string;
 }
 
@@ -39,13 +43,21 @@ interface Document {
   extractions?: DocumentExtraction[];
 }
 
-interface AnalyzeResult {
-  summary: string;
-  tinyNextAction?: string;
-  requiredAction?: string;
-  deadlineText?: string | null;
-  deadline?: string | null;
-  status?: string;
+function extractionStatusLabel(status?: string): string {
+  switch (status) {
+    case 'extracted':
+      return 'Text extracted';
+    case 'analyzed':
+      return 'Analyzed';
+    case 'ocr_unavailable':
+      return 'OCR unavailable';
+    case 'failed':
+      return 'Extraction failed';
+    case 'empty':
+      return 'No text found';
+    default:
+      return 'Not analyzed yet';
+  }
 }
 
 function DocumentsContent({ token }: { token: string }) {
@@ -57,8 +69,9 @@ function DocumentsContent({ token }: { token: string }) {
   const [notes, setNotes] = useState('');
   const [file, setFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
-  const [analyzingId, setAnalyzingId] = useState<string | null>(null);
-  const [analysis, setAnalysis] = useState<Record<string, AnalyzeResult>>({});
+  const [workingId, setWorkingId] = useState<string | null>(null);
+  const [workingAction, setWorkingAction] = useState<'extract' | 'analyze' | null>(null);
+  const [analysis, setAnalysis] = useState<Record<string, DocumentAnalysisResult>>({});
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
@@ -107,11 +120,32 @@ function DocumentsContent({ token }: { token: string }) {
     }
   };
 
-  const analyzeDocument = async (docId: string) => {
-    setAnalyzingId(docId);
+  const extractDocument = async (docId: string) => {
+    setWorkingId(docId);
+    setWorkingAction('extract');
     setError(null);
     try {
-      const res = await apiFetch<AnalyzeResult>(`/documents/${docId}/analyze`, {
+      const res = await apiFetch<DocumentAnalysisResult>(`/documents/${docId}/extract`, {
+        method: 'POST',
+        token,
+        body: JSON.stringify({}),
+      });
+      setAnalysis((prev) => ({ ...prev, [docId]: res }));
+      await load();
+    } catch {
+      setError('Could not extract text from this document.');
+    } finally {
+      setWorkingId(null);
+      setWorkingAction(null);
+    }
+  };
+
+  const analyzeDocument = async (docId: string) => {
+    setWorkingId(docId);
+    setWorkingAction('analyze');
+    setError(null);
+    try {
+      const res = await apiFetch<DocumentAnalysisResult>(`/documents/${docId}/analyze`, {
         method: 'POST',
         token,
         body: JSON.stringify({}),
@@ -121,7 +155,8 @@ function DocumentsContent({ token }: { token: string }) {
     } catch {
       setError('Could not analyze this document.');
     } finally {
-      setAnalyzingId(null);
+      setWorkingId(null);
+      setWorkingAction(null);
     }
   };
 
@@ -204,10 +239,18 @@ function DocumentsContent({ token }: { token: string }) {
         empty="Upload your most urgent letter first."
         render={(doc: Document) => {
           const latest = doc.extractions?.[0];
-          const result = analysis[doc.id];
+          const result = analysis[doc.id] ?? (latest ? {
+            summary: latest.summary,
+            status: latest.status,
+            deadline: latest.deadline,
+            cards: latest.cards,
+            missingInfo: latest.missingInfo,
+            requiredAction: latest.requiredActions?.[0],
+          } : null);
+
           return (
             <div className="text-sm space-y-3">
-              <div className="flex flex-wrap justify-between gap-2">
+              <div className="flex flex-wrap justify-between gap-2 items-start">
                 <div>
                   <p className="font-medium">{doc.title}</p>
                   <p style={{ color: 'var(--text-muted)' }}>
@@ -216,61 +259,36 @@ function DocumentsContent({ token }: { token: string }) {
                   {doc.deadline && (
                     <p style={{ color: 'var(--text-muted)' }}>Deadline: {formatDate(doc.deadline)}</p>
                   )}
+                  {latest?.status && (
+                    <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
+                      Extraction: {extractionStatusLabel(latest.status)}
+                      {latest.extractedAt ? ` · ${formatDate(latest.extractedAt)}` : ''}
+                    </p>
+                  )}
                 </div>
-                <button
-                  type="button"
-                  disabled={analyzingId === doc.id}
-                  onClick={() => void analyzeDocument(doc.id)}
-                  className={btnClass}
-                  style={btnStyle}
-                >
-                  {analyzingId === doc.id ? 'Analyzing…' : 'Analyze'}
-                </button>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    disabled={workingId === doc.id}
+                    onClick={() => void extractDocument(doc.id)}
+                    className={btnClass}
+                    style={btnStyle}
+                  >
+                    {workingId === doc.id && workingAction === 'extract' ? 'Extracting…' : 'Extract text'}
+                  </button>
+                  <button
+                    type="button"
+                    disabled={workingId === doc.id}
+                    onClick={() => void analyzeDocument(doc.id)}
+                    className={btnClass}
+                    style={btnStyle}
+                  >
+                    {workingId === doc.id && workingAction === 'analyze' ? 'Analyzing…' : 'Analyze'}
+                  </button>
+                </div>
               </div>
 
-              {(result || latest) && (
-                <div className="rounded-lg border p-3 space-y-2" style={{ borderColor: 'var(--border)' }}>
-                  <p>
-                    <span className="text-xs uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>
-                      Summary
-                    </span>
-                    <br />
-                    {result?.summary ?? latest?.summary}
-                  </p>
-                  {(result?.deadlineText || result?.deadline || latest?.deadline) && (
-                    <p>
-                      <span className="text-xs uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>
-                        Deadline
-                      </span>
-                      <br />
-                      {result?.deadlineText ?? formatDate(result?.deadline ?? latest?.deadline)}
-                    </p>
-                  )}
-                  {(result?.requiredAction || latest?.requiredActions?.[0]) && (
-                    <p>
-                      <span className="text-xs uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>
-                        Required action
-                      </span>
-                      <br />
-                      {result?.requiredAction ?? latest?.requiredActions?.[0]}
-                    </p>
-                  )}
-                  {result?.tinyNextAction && (
-                    <p>
-                      <span className="text-xs uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>
-                        One tiny next action
-                      </span>
-                      <br />
-                      {result.tinyNextAction}
-                    </p>
-                  )}
-                  {result?.status === 'pending_extraction' && (
-                    <p style={{ color: 'var(--text-muted)' }}>
-                      File saved. Text extraction for this file type is next.
-                    </p>
-                  )}
-                </div>
-              )}
+              {result && <DocumentAnalysisCards result={result} />}
             </div>
           );
         }}

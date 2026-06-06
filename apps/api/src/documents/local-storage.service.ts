@@ -44,11 +44,15 @@ export class LocalStorageService {
     return { storageKey, kind: this.kindFor(ext, file.mimetype) };
   }
 
+  async readBuffer(storageKey: string): Promise<Buffer> {
+    const fullPath = join(this.root, storageKey);
+    return readFile(fullPath);
+  }
+
   async readText(storageKey: string): Promise<string | null> {
     const kind = this.kindForStorageKey(storageKey);
     if (kind !== 'text') return null;
-    const fullPath = join(this.root, storageKey);
-    const buf = await readFile(fullPath);
+    const buf = await this.readBuffer(storageKey);
     return buf.toString('utf8');
   }
 

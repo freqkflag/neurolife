@@ -347,9 +347,13 @@ model DocumentExtraction {
   id              String   @id @default(uuid())
   documentId      String
   document        Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
-  summary         String
+  rawText         String?  @db.Text
+  status          String   @default("analyzed")
+  summary         String   @default("")
   deadline        DateTime?
-  requiredActions String[]
+  requiredActions String[] @default([])
+  missingInfo     String[] @default([])
+  cards           Json?
   extractedAt     DateTime @default(now())
 }
 

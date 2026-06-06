@@ -10,6 +10,7 @@
     "health": "bash scripts/health.sh",
     "verify:dev": "bash scripts/verify-dev.sh",
     "build": "turbo run build",
+    "test": "pnpm --filter @neurolife/api test",
     "lint": "turbo run lint",
     "typecheck": "turbo run typecheck",
     "db:generate": "pnpm --filter @neurolife/database generate",

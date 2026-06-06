@@ -8,10 +8,10 @@ Companion to `APP_INVENTORY.md`. Prioritized gaps between intended product visio
 
 | Gap | Impact | Where |
 |-----|--------|-------|
-| PDF/image text extraction for documents | Core scary-mail workflow blocked for most real mail | `documents.service.ts` — OCR/PDF TODO |
+| Scanned PDF OCR (no text layer) | Image-only PDFs still need paste or future OCR pass | `document-extraction.service.ts` |
 | Crisis page has no persistence or AI | Safety feature resets on refresh; no `crisis_stabilization` agent | `/crisis` |
 | Mobile app not connected to API/sync | Two products, not one system | `apps/mobile` |
-| No automated tests (API or web) | Regressions undetected | Entire repo |
+| Limited automated tests | Documents API smoke tests only; no web/CI | `apps/api/test/` |
 | Bill edit/delete/mark-paid | Money data becomes stale | `/bills`, API |
 | Notification delivery pipeline | Reminders don't reach users | `notifications.service.ts` |
 | Production document storage security | Sensitive files on local disk unencrypted | `local-storage.service.ts` |

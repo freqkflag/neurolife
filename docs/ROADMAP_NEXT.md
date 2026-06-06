@@ -11,7 +11,7 @@ Prioritized build sequence based on `APP_INVENTORY.md` and `GAP_ANALYSIS.md`.
 
 | # | Deliverable | Routes / areas |
 |---|-------------|----------------|
-| 1.1 | PDF + image OCR/text extraction pipeline | `POST /documents/:id/analyze` |
+| 1.1 | ~~PDF + image OCR/text extraction pipeline~~ **Done (MVP)** — `pdf-parse` + `tesseract.js`; scanned PDFs TODO | `POST /documents/:id/extract`, `/analyze`, `GET /extractions` |
 | 1.2 | Bill mark-paid, edit, delete | `/bills`, `/budget/payday-planner` |
 | 1.3 | Wire `/disability` to admin disability API + symptom timeline stub | `/disability` |
 | 1.4 | Merge or wire `/groceries` + `/pantry` into `/food` | Food routes |
@@ -19,7 +19,7 @@ Prioritized build sequence based on `APP_INVENTORY.md` and `GAP_ANALYSIS.md`.
 | 1.6 | Weekly review API endpoint + persistence | `/weekly-review` |
 | 1.7 | Document download + delete | `/documents` |
 | 1.8 | AI consent checkbox on scary mail + documents | Privacy UX |
-| 1.9 | Basic API integration tests for auth, budget, documents | CI |
+| 1.9 | Basic API integration tests for auth, budget, documents | **Partial** — documents smoke tests in `apps/api/test/` |
 
 **Exit criteria:** User can upload a PDF, see pending/extracted state, manage bills through payday, and no sidebar tab is a static placeholder.
 

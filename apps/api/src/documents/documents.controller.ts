@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Get,
@@ -39,6 +40,7 @@ export class DocumentsController {
     @UploadedFile() file: Express.Multer.File,
     @Body() body: { title?: string; docType?: string; deadline?: string; notes?: string; isScaryMail?: string },
   ) {
+    if (!file) throw new BadRequestException('No file provided');
     return this.documents.upload(user.sub, file, {
       title: body.title,
       docType: body.docType,
@@ -53,17 +55,27 @@ export class DocumentsController {
     return this.documents.create(user.sub, body);
   }
 
-  @Post(':id/analyze')
-  analyze(@CurrentUser() user: { sub: string }, @Param('id') id: string) {
-    return this.documents.analyze(user.sub, id);
+  @Post('analyze-text')
+  analyzeText(
+    @CurrentUser() user: { sub: string },
+    @Body() body: { content: string; documentId?: string },
+  ) {
+    if (!body.content?.trim()) throw new BadRequestException('Content is required');
+    return this.documents.analyzeText(user.sub, body.content, body.documentId);
+  }
+
+  @Get(':id/extractions')
+  listExtractions(@CurrentUser() user: { sub: string }, @Param('id') id: string) {
+    return this.documents.listExtractions(user.sub, id);
   }
 
   @Post(':id/extract')
-  extract(
-    @CurrentUser() user: { sub: string },
-    @Param('id') id: string,
-    @Body('content') content: string,
-  ) {
-    return this.documents.extractScaryMail(user.sub, id, content);
+  extract(@CurrentUser() user: { sub: string }, @Param('id') id: string) {
+    return this.documents.extractText(user.sub, id);
+  }
+
+  @Post(':id/analyze')
+  analyze(@CurrentUser() user: { sub: string }, @Param('id') id: string) {
+    return this.documents.analyze(user.sub, id);
   }
 }
